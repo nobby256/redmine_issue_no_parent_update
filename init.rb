@@ -1,4 +1,4 @@
-require_dependency 'issue_no_parent_updatePatch'
+require_dependency 'issue_no_parent_update_patch'
 
 Rails.configuration.to_prepare do
   require_dependency 'issue'
