@@ -17,10 +17,11 @@ module IssueNoParentUpdatePatch
   module InstanceMethods
 
     def copy_fixed_version_id_to_children
-      # 親が変わった場合
+      #新規作成、もしくは、親が変わった場合
       if new_record? || parent_id_changed?
-        if self.parent_issue_id
-          # 親にバージョンが指定されている場合は同じにする
+        if self.parent_issue_id && !self.fixed_version_id
+          #親が指定されていてかつ、バージョンが未指定の場合は
+          #親と同じバージョンにする
           if @parent_issue.fixed_version_id
             self.fixed_version_id = @parent_issue.fixed_version_id
           end
