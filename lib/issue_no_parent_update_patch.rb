@@ -3,16 +3,41 @@ module IssueNoParentUpdatePatch
     base.send(:include, InstanceMethods)
 
     base.class_eval do
+      unloadable
+
+      #è¦ª/è‡ªåˆ†/å­ä¾›ã®é–“ã§ãƒãƒ¼ã‚¸ãƒ§ãƒ³ã®ã¤ã˜ã¤ã¾ã‚’åˆã‚ã›ã‚‹
+      before_save :adjust_fixed_version_id
+      
+      #è¦ªãƒã‚±ãƒƒãƒˆã®é–‹å§‹æ—¥/æœŸæ—¥/å„ªå…ˆåº¦ã‚’ç‹¬è‡ªã«å¤‰æ›´å¯èƒ½ã«ã™ã‚‹
       alias_method_chain :recalculate_attributes_for, :no_update
       alias_method_chain :safe_attributes=, :no_update
     end
   end
 
   module InstanceMethods
+
+    def adjust_fixed_version_id
+      # è¦ªãŒå¤‰ã‚ã£ãŸå ´åˆ
+      if new_record? || parent_id_changed?
+        if self.parent_issue_id
+          # è¦ªã«ãƒãƒ¼ã‚¸ãƒ§ãƒ³ãŒæŒ‡å®šã•ã‚Œã¦ã„ã‚‹å ´åˆã¯åŒã˜ã«ã™ã‚‹
+          if @parent_issue.fixed_version_id
+            self.fixed_version_id = @parent_issue.fixed_version_id
+          end
+        end
+      end
+      if !leaf? && fixed_version_id_changed?
+          children.each do |child|
+              child.fixed_version_id = self.fixed_version_id
+              child.save!
+          end
+      end
+    end
+
     def recalculate_attributes_for_with_no_update(issue_id)
       if issue_id && p = Issue.find_by_id(issue_id)
 
-        #ƒ[ƒhƒ}ƒbƒv‚É•\¦‚µ‚È‚¢ƒgƒ‰ƒbƒJ[‚Ì‚İŠJn“ú/Šú“ú/—Dæ“x‚ªqƒ`ƒPƒbƒg‚ÌWŒv’l‚Æ‚È‚é
+        #ãƒ­ãƒ¼ãƒ‰ãƒãƒƒãƒ—ã«è¡¨ç¤ºã—ãªã„ãƒˆãƒ©ãƒƒã‚«ãƒ¼ã®ã¿é–‹å§‹æ—¥/æœŸæ—¥/å„ªå…ˆåº¦ãŒå­ãƒã‚±ãƒƒãƒˆã®é›†è¨ˆå€¤ã¨ãªã‚‹
         unless p.tracker.is_in_roadmap
           # priority = highest priority of children
           if priority_position = p.children.joins(:priority).maximum("#{IssuePriority.table_name}.position")
@@ -81,7 +106,7 @@ module IssueNoParentUpdatePatch
       return if attrs.empty?
 
       unless leaf?
-        #ƒ`ƒPƒbƒgƒcƒŠ[‚Ì––’[‚Å‚È‚¢ê‡‚Å‚àAƒ[ƒhƒ}ƒbƒv‚É•\¦‚·‚éƒgƒ‰ƒbƒJ[‚Ìê‡‚ÉŒÀ‚èŠJn“ú/Šú“ú/—Dæ“x‚ª•ÒW‰Â”\
+        #ãƒã‚±ãƒƒãƒˆãƒ„ãƒªãƒ¼ã®æœ«ç«¯ã§ãªã„å ´åˆã§ã‚‚ã€ãƒ­ãƒ¼ãƒ‰ãƒãƒƒãƒ—ã«è¡¨ç¤ºã™ã‚‹ãƒˆãƒ©ãƒƒã‚«ãƒ¼ã®å ´åˆã«é™ã‚Šé–‹å§‹æ—¥/æœŸæ—¥/å„ªå…ˆåº¦ãŒç·¨é›†å¯èƒ½
         tr = Tracker.find(self.tracker_id)
         unless tr.is_in_roadmap
           attrs.reject! {|k,v| %w(priority_id done_ratio start_date due_date estimated_hours).include?(k)}
