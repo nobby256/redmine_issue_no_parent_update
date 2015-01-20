@@ -6,7 +6,7 @@ module IssueNoParentUpdatePatch
       unloadable
 
       #親/自分/子供の間でバージョンのつじつまを合わせる
-      before_save :adjust_fixed_version_id
+      before_save :copy_fixed_version_id_to_children
       
       #親チケットの開始日/期日/優先度を独自に変更可能にする
       alias_method_chain :recalculate_attributes_for, :no_update
@@ -16,7 +16,7 @@ module IssueNoParentUpdatePatch
 
   module InstanceMethods
 
-    def adjust_fixed_version_id
+    def copy_fixed_version_id_to_children
       # 親が変わった場合
       if new_record? || parent_id_changed?
         if self.parent_issue_id
